@@ -1,0 +1,6 @@
+target
+.git
+.github
+Dockerfile
+README.md
+EOF
