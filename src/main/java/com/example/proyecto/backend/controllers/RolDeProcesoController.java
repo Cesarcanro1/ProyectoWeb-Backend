@@ -25,7 +25,6 @@ public class RolDeProcesoController {
         this.rolDeProcesoService = rolDeProcesoService;
     }
 
-    // Obtener todos o filtrar por empresa ?empresaId=
     @GetMapping
     public List<RolDeProcesoDTO> obtenerTodos(@RequestParam(required = false) Long empresaId) {
         if (empresaId != null) {

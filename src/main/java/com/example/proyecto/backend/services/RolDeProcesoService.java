@@ -3,24 +3,29 @@ package com.example.proyecto.backend.services;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.proyecto.backend.dtos.RolDeProcesoDTO;
 import com.example.proyecto.backend.entity.Empresa;
 import com.example.proyecto.backend.entity.RolDeProceso;
 import com.example.proyecto.backend.repository.RolDeProcesoRepository;
+import com.example.proyecto.backend.security.jwt.SecurityUtils;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class RolDeProcesoService {
 
     private final RolDeProcesoRepository repo;
-    public RolDeProcesoService(RolDeProcesoRepository repo) { this.repo = repo; }
+    private final SecurityUtils securityUtils;
 
-    // helpers
     private RolDeProcesoDTO toDTO(RolDeProceso r) {
         RolDeProcesoDTO dto = new RolDeProcesoDTO();
         dto.setId(r.getId());
-        dto.setEmpresaId(r.getEmpresa().getId()); // <- relación
+        dto.setEmpresaId(r.getEmpresa().getId());
         dto.setNombre(r.getNombre());
         dto.setDescripcion(r.getDescripcion());
         return dto;
@@ -30,7 +35,7 @@ public class RolDeProcesoService {
         RolDeProceso r = new RolDeProceso();
         r.setId(dto.getId());
 
-        Empresa e = new Empresa();      // map por id sin ir a BD
+        Empresa e = new Empresa();
         e.setId(dto.getEmpresaId());
         r.setEmpresa(e);
 
@@ -39,27 +44,43 @@ public class RolDeProcesoService {
         return r;
     }
 
+    // Verifica que el usuario logueado pertenezca a la misma empresa
+    private void validarAccesoEmpresa(Long empresaId) {
+        Long currentCompanyId = securityUtils.currentCompanyId();
+        if (currentCompanyId == null || !currentCompanyId.equals(empresaId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado a esta empresa");
+        }
+    }
+
     // CRUD
     public List<RolDeProcesoDTO> obtenerTodos() {
-        return repo.findAll().stream().map(this::toDTO).toList();
+        Long currentCompanyId = securityUtils.currentCompanyId();
+        if (currentCompanyId == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
+        }
+        return repo.findAllByEmpresa_Id(currentCompanyId).stream().map(this::toDTO).toList();
     }
 
     public List<RolDeProcesoDTO> obtenerPorEmpresa(Long empresaId) {
-        return repo.findAllByEmpresa_Id(empresaId).stream().map(this::toDTO).toList(); // <- cambio
+        validarAccesoEmpresa(empresaId);
+        return repo.findAllByEmpresa_Id(empresaId).stream().map(this::toDTO).toList();
     }
 
     public RolDeProcesoDTO obtenerPorId(Long id) {
         RolDeProceso r = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Rol no encontrado"));
+        validarAccesoEmpresa(r.getEmpresa().getId());
         return toDTO(r);
     }
 
     public RolDeProcesoDTO crear(RolDeProcesoDTO dto) {
+        validarAccesoEmpresa(dto.getEmpresaId());
         RolDeProceso guardado = repo.save(toEntity(dto));
         return toDTO(guardado);
     }
 
     public RolDeProcesoDTO actualizar(Long id, RolDeProcesoDTO dto) {
         RolDeProceso r = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Rol no encontrado"));
+        validarAccesoEmpresa(r.getEmpresa().getId());
 
         Empresa e = new Empresa();
         e.setId(dto.getEmpresaId());
@@ -70,9 +91,9 @@ public class RolDeProcesoService {
         return toDTO(repo.save(r));
     }
 
-    // soft delete
     public void eliminar(Long id) {
         RolDeProceso r = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Rol no encontrado"));
+        validarAccesoEmpresa(r.getEmpresa().getId());
         repo.delete(r);
     }
 }

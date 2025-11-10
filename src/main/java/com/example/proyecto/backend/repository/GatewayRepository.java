@@ -10,4 +10,5 @@ import com.example.proyecto.backend.entity.Gateway;
 @Repository
 public interface GatewayRepository extends JpaRepository<Gateway, Long> {
     List<Gateway> findAllByProceso_Id(Long procesoId);
+    List<Gateway> findAllByProceso_Empresa_Id(Long empresaId);
 }

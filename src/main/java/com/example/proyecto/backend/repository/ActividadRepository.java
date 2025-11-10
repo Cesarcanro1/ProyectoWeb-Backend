@@ -10,4 +10,5 @@ import com.example.proyecto.backend.entity.Actividad;
 @Repository
 public interface ActividadRepository extends JpaRepository<Actividad, Long> {
     List<Actividad> findAllByProceso_Id(Long procesoId);
+    List<Actividad> findAllByProceso_Empresa_Id(Long empresaId);
 }

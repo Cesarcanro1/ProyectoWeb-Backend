@@ -1,7 +1,5 @@
 package com.example.proyecto.backend.controllers;
 
-import java.util.List;
-
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,39 +15,42 @@ import com.example.proyecto.backend.services.EmpresaService;
 @RestController
 @RequestMapping("/api/empresas")
 public class EmpresaController {
+
     private final EmpresaService empresaService;
 
     public EmpresaController(EmpresaService empresaService) {
         this.empresaService = empresaService;
     }
 
-    // Obtener todas las empresas activas
-    @GetMapping
-    public List<EmpresaDTO> obtenerTodas() {
-        return empresaService.obtenerTodos();
+    // Obtener la empresa asociada al usuario logueado
+    @GetMapping("/mi-empresa")
+    public EmpresaDTO obtenerMiEmpresa() {
+        return empresaService.obtenerMiEmpresa();
     }
 
-    // Obtener una empresa por ID
+    // Bloquea los demás endpoints por ahora
+    @GetMapping
+    public void obtenerTodas() {
+        throw new RuntimeException("No autorizado");
+    }
+
     @GetMapping("/{id}")
     public EmpresaDTO obtenerPorId(@PathVariable Long id) {
         return empresaService.obtenerPorId(id);
     }
 
-    // Crear una nueva empresa
     @PostMapping
-    public EmpresaDTO crear(@RequestBody EmpresaDTO empresaDTO) {
-        return empresaService.crear(empresaDTO);
+    public void crear(@RequestBody EmpresaDTO empresaDTO) {
+        throw new RuntimeException("No autorizado");
     }
 
-    // Actualizar una empresa existente
     @PutMapping("/{id}")
     public EmpresaDTO actualizar(@PathVariable Long id, @RequestBody EmpresaDTO empresaDTO) {
         return empresaService.actualizar(id, empresaDTO);
     }
 
-    // Eliminar lógicamente una empresa (soft delete)
     @DeleteMapping("/{id}")
     public void eliminar(@PathVariable Long id) {
-        empresaService.eliminar(id);
+        throw new RuntimeException("No autorizado");
     }
 }

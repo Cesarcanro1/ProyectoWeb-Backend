@@ -10,6 +10,7 @@ import com.example.proyecto.backend.entity.Arco;
 @Repository
 public interface ArcoRepository extends JpaRepository<Arco, Long> {
     List<Arco> findAllByProceso_Id(Long procesoId);
+    List<Arco> findAllByProceso_Empresa_Id(Long empresaId);
     List<Arco> findAllByOrigenTipoAndOrigenId(String origenTipo, Long origenId);
     List<Arco> findAllByDestinoTipoAndDestinoId(String destinoTipo, Long destinoId);
 }
