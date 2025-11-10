@@ -16,7 +16,7 @@ import com.example.proyecto.backend.dtos.ProcesoDTO;
 import com.example.proyecto.backend.services.ProcesoService;
 
 @RestController
-@RequestMapping("/procesos")
+@RequestMapping("/api/procesos")
 public class ProcesoController {
 
     private final ProcesoService procesoService;

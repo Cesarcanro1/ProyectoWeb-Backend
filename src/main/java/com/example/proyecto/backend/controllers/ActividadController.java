@@ -16,7 +16,7 @@ import com.example.proyecto.backend.dtos.ActividadDTO;
 import com.example.proyecto.backend.services.ActividadService;
 
 @RestController
-@RequestMapping("/actividades")
+@RequestMapping("/api/actividades")
 public class ActividadController {
 
     private final ActividadService actividadService;

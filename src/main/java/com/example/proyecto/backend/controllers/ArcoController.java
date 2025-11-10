@@ -16,7 +16,7 @@ import com.example.proyecto.backend.dtos.ArcoDTO;
 import com.example.proyecto.backend.services.ArcoService;
 
 @RestController
-@RequestMapping("/arcos")
+@RequestMapping("/api/arcos")
 public class ArcoController {
 
     private final ArcoService arcoService;

@@ -23,7 +23,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: backend
-          image: ghcr.io/Cesarcanro1/Proyecto-Web:latest
+          image: ghcr.io/cesarcanro1/proyecto-web:latest
           ports:
             - containerPort: 8080  # Spring Boot
 

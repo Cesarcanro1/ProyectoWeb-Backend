@@ -16,7 +16,7 @@ import com.example.proyecto.backend.dtos.UsuarioDTO;
 import com.example.proyecto.backend.services.UsuarioService;
 
 @RestController
-@RequestMapping("/usuarios")
+@RequestMapping("/api/usuarios")
 public class UsuarioController {
     private final UsuarioService usuarioService;
 

@@ -16,7 +16,7 @@ import com.example.proyecto.backend.dtos.GatewayDTO;
 import com.example.proyecto.backend.services.GatewayService;
 
 @RestController
-@RequestMapping("/gateways")
+@RequestMapping("/api/gateways")
 public class GatewayController {
 
     private final GatewayService gatewayService;

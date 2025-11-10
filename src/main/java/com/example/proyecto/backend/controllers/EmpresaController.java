@@ -15,7 +15,7 @@ import com.example.proyecto.backend.dtos.EmpresaDTO;
 import com.example.proyecto.backend.services.EmpresaService;
 
 @RestController
-@RequestMapping("/empresas")
+@RequestMapping("/api/empresas")
 public class EmpresaController {
     private final EmpresaService empresaService;
 

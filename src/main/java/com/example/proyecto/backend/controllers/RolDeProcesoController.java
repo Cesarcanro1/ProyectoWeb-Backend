@@ -16,7 +16,7 @@ import com.example.proyecto.backend.dtos.RolDeProcesoDTO;
 import com.example.proyecto.backend.services.RolDeProcesoService;
 
 @RestController
-@RequestMapping("/roles-de-proceso")
+@RequestMapping("/api/roles-de-proceso")
 public class RolDeProcesoController {
 
     private final RolDeProcesoService rolDeProcesoService;
