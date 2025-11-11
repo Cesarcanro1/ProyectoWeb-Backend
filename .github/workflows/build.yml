@@ -50,11 +50,10 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [self-hosted, linux, proyecto-web]
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Apply manifests & rollout (local MicroK8s)
         run: |
           microk8s kubectl apply -f k8s.yaml
@@ -62,3 +61,4 @@ jobs:
             ${{ env.DEPLOYMENT }}=${{ env.IMAGE }}:latest
           microk8s kubectl -n ${{ env.NAMESPACE }} rollout status deploy/${{ env.DEPLOYMENT }}
           microk8s kubectl -n ${{ env.NAMESPACE }} get pods -l app=${{ env.DEPLOYMENT }} -o wide
+
