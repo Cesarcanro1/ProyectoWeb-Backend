@@ -28,35 +28,39 @@ public class PublicSignupController {
 
   @PostMapping("/signup")
   public ResponseEntity<?> signup(@RequestBody SignupRequest req) {
+    try {
+      if (empresaRepo.findByNit(req.empresa.nit()).isPresent()) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("NIT ya existe");
+      }
 
-    if (empresaRepo.findByNit(req.empresa.nit()).isPresent()) {
-      return ResponseEntity.status(HttpStatus.CONFLICT).body("NIT ya existe");
+      if (usuarioRepo.existsByEmail(req.usuario.email().trim().toLowerCase())) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("Email ya existe");
+      }
+
+      Empresa e = new Empresa();
+      e.setNombre(req.empresa.nombre());
+      e.setNit(req.empresa.nit());
+      e.setCorreoContacto(req.empresa.correoContacto());
+      e.setStatus(0);
+      e = empresaRepo.save(e);
+
+      Usuario u = new Usuario();
+      u.setEmpresa(e);
+      u.setNombres(req.usuario.nombres());
+      u.setApellidos(req.usuario.apellidos());
+      u.setEmail(req.usuario.email().trim().toLowerCase());
+      u.setPassword(passwordEncoder.encode(req.usuario.password()));
+      u.setStatus(0);
+      u = usuarioRepo.save(u);
+
+      return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+        "empresaId", e.getId(),
+        "usuarioId", u.getId()
+      ));
+    } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+      return ResponseEntity.status(HttpStatus.CONFLICT)
+          .body("Email o NIT ya registrado");
     }
-
-    if (usuarioRepo.existsByEmail(req.usuario.email().trim().toLowerCase())) {
-      return ResponseEntity.status(HttpStatus.CONFLICT).body("Email ya existe");
-    }
-
-    Empresa e = new Empresa();
-    e.setNombre(req.empresa.nombre());
-    e.setNit(req.empresa.nit());
-    e.setCorreoContacto(req.empresa.correoContacto());
-    e.setStatus(0);
-    e = empresaRepo.save(e);
-
-    Usuario u = new Usuario();
-    u.setEmpresa(e);
-    u.setNombres(req.usuario.nombres());
-    u.setApellidos(req.usuario.apellidos());
-    u.setEmail(req.usuario.email().trim().toLowerCase());
-    u.setPassword(passwordEncoder.encode(req.usuario.password()));
-    u.setStatus(0);
-    u = usuarioRepo.save(u);
-
-    return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-      "empresaId", e.getId(),
-      "usuarioId", u.getId()
-    ));
   }
 
   public record SignupRequest(
