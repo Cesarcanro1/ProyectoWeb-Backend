@@ -3,6 +3,7 @@ package com.example.proyecto.backend.security.jwt;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -37,7 +38,8 @@ public class SecurityConfig {
         return http
                 // CSRF se desactiva porque JWT ya protege requests sin sesiones
                 .csrf(csrf -> csrf.disable())
-                // sin sesiones -> cada request debe venir con token
+                .cors(Customizer.withDefaults())
+		 // sin sesiones -> cada request debe venir con token
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // reglas de acceso
                 .authorizeHttpRequests(auth -> auth
