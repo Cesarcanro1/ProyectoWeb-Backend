@@ -37,9 +37,9 @@ public class JwtFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain chain
-    ) throws ServletException, IOException {
+        ) throws ServletException, IOException {
 
-        System.out.println(">>> JWT path = " + request.getRequestURI() + " method=" + request.getMethod());
+        System.out.println(">>> JWT path = " + request.getRequestURI() + " | method = " + request.getMethod());
 
         // 0️⃣: Preflight CORS: siempre dejar pasar
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {

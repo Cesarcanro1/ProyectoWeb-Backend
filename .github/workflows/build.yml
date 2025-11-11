@@ -1,34 +1,72 @@
-name: Build & Push Backend to GHCR
+name: Build & Deploy Backend
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/cesarcanro1/proyecto-backend
+  NAMESPACE: proyecto-web
+  DEPLOYMENT: backend
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Build JAR
+        run: mvn -B -DskipTests package
 
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker image
+      - name: Build & Push image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/cesarcanro1/proyecto-web:latest
-            ghcr.io/cesarcanro1/proyecto-web:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Requiere que configures el secreto KUBECONFIG_DATA con tu kubeconfig en base64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        run: |
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > kubeconfig
+          chmod 600 kubeconfig
+          echo "KUBECONFIG=$PWD/kubeconfig" >> $GITHUB_ENV
+
+      - name: Apply manifests (namespace, svc, ingress, deployment)
+        env:
+          KUBECONFIG: ${{ env.KUBECONFIG }}
+        run: |
+          kubectl apply -f k8s.yaml
+          kubectl -n ${{ env.NAMESPACE }} set image deploy/${{ env.DEPLOYMENT }} \
+            ${{ env.DEPLOYMENT }}=${{ env.IMAGE }}:latest
+          kubectl -n ${{ env.NAMESPACE }} rollout status deploy/${{ env.DEPLOYMENT }}

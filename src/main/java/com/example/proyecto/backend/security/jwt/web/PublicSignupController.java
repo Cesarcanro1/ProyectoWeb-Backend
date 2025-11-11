@@ -28,13 +28,9 @@ public class PublicSignupController {
 
   @PostMapping("/signup")
   public ResponseEntity<?> signup(@RequestBody SignupRequest req) {
-    if (usuarioRepo.count() > 0) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN)
-          .body("El registro público ya no está disponible");
-    }
 
     if (empresaRepo.findByNit(req.empresa.nit()).isPresent()) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body("NIT ya existe");
+      return ResponseEntity.status(HttpStatus.CONFLICT).body("NIT ya existe");
     }
 
     if (usuarioRepo.existsByEmail(req.usuario.email().trim().toLowerCase())) {
@@ -53,7 +49,7 @@ public class PublicSignupController {
     u.setNombres(req.usuario.nombres());
     u.setApellidos(req.usuario.apellidos());
     u.setEmail(req.usuario.email().trim().toLowerCase());
-    u.setPassword(passwordEncoder.encode(req.usuario.password())); // hash!
+    u.setPassword(passwordEncoder.encode(req.usuario.password()));
     u.setStatus(0);
     u = usuarioRepo.save(u);
 

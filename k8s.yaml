@@ -19,15 +19,13 @@ spec:
       labels:
         app: backend
     spec:
-      imagePullSecrets:
-        - name: ghcr-secret
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
       containers:
         - name: backend
-          image: ghcr.io/cesarcanro1/proyecto-web:latest
+          image: ghcr.io/cesarcanro1/proyecto-backend:latest
           ports:
             - containerPort: 8080
           env:
@@ -36,8 +34,14 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
             # ==== JWT ====
+            - name: SECURITY_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-secrets
+                  key: JWT_SECRET
             - name: security.jwt.access-exp-min
               value: "15"
+            # (compat si tu app aún lee esta clave)
             - name: security.jwt.secret
               valueFrom:
                 secretKeyRef:
@@ -66,15 +70,14 @@ spec:
             limits:
               cpu: "500m"
               memory: "512Mi"
+          # Probes por TCP para evitar 404 en "/"
           readinessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
-            httpGet:
-              path: /
+            tcpSocket:
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 10
