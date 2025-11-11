@@ -51,7 +51,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    # Requiere que configures el secreto KUBECONFIG_DATA con tu kubeconfig en base64
+    # Requiere que configure el secreto KUBECONFIG_DATA con tu kubeconfig en base64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
