@@ -31,7 +31,6 @@ public class UsuarioService {
         dto.setNombres(u.getNombres());
         dto.setApellidos(u.getApellidos());
         dto.setEmail(u.getEmail());
-        // por seguridad normalmente NO devolvemos password
         return dto;
     }
 
