@@ -24,7 +24,7 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final CustomUserDetailsService uds;
 
-    // ✅ rutas públicas que NO requieren token
+    // rutas públicas que NO requieren token
     private static final Set<String> WHITE_LIST = Set.of(
             "/error",                 // ⬅️ nuevo
             "/auth/login",
