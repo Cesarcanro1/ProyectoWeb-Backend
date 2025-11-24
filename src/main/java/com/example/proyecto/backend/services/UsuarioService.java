@@ -144,7 +144,7 @@ public class UsuarioService {
         repo.delete(u);
     }
 
-    // ===================== VALIDACIÓN EMPRESA =====================
+    // ==================== VALIDACIÓN EMPRESA ====================
 
     private void validarAccesoEmpresa(Long empresaId) {
         Long currentCompanyId = securityUtils.currentCompanyId();
