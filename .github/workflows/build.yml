@@ -1,76 +1,64 @@
-name: Build & Deploy Backend
+name: Build and Deploy Backend
 
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
-
-env:
-  IMAGE: ghcr.io/cesarcanro1/proyecto-backend
-  NAMESPACE: proyecto-web
-  DEPLOYMENT: backend
+    branches:
+      - main
 
 jobs:
+
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: "17"
-          cache: maven
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Build JAR
-        run: mvn -B -DskipTests package
+      - name: Build backend JAR
+        run: mvn -B package --file pom.xml
 
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE }}:latest
-            ${{ env.IMAGE }}:sha-${{ github.sha }}
+      - name: Build Docker image
+        run: |
+          IMAGE_TAG=sha-${{ github.sha }}
+          docker build -t ghcr.io/${{ github.repository }}/proyecto-backend:${IMAGE_TAG} .
+
+      - name: Push image
+        run: |
+          IMAGE_TAG=sha-${{ github.sha }}
+          docker push ghcr.io/${{ github.repository }}/proyecto-backend:${IMAGE_TAG}
+
 
   deploy:
     needs: build
     runs-on: self-hosted
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Inserta el IP real del nodo en el host del Ingress
-      - name: Inject NODE_IP into k8s.yaml
+      # Inserta el SHA en el archivo k8s.yaml ANTES del deploy
+      - name: Replace image tag in k8s.yaml
         run: |
-          NODE_IP=$(hostname -I | awk '{print $1}')
-          echo "NODE_IP=${NODE_IP}"
-          sed -i "s/backend.\${NODE_IP}.nip.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
+          IMAGE_TAG=sha-${{ github.sha }}
+          sed -i "s/sha-PLACEHOLDER/${IMAGE_TAG}/g" k8s.yaml
 
-      - name: Apply manifests & rollout (local MicroK8s)
+      - name: Apply manifests
         run: |
           sudo microk8s kubectl apply -f k8s.yaml
-          
-          sudo microk8s kubectl -n proyecto-web set image deploy/backend \
-            backend=ghcr.io/cesarcanro1/proyecto-backend:latest
-          
+
+      - name: Wait for rollout
+        run: |
           sudo microk8s kubectl -n proyecto-web rollout status deploy/backend
-          
-          sudo microk8s kubectl -n proyecto-web get ingress backend -o yaml | sed -n '1,120p'
-          
-          sudo microk8s kubectl -n proyecto-web get pods -l app=backend -o wide
