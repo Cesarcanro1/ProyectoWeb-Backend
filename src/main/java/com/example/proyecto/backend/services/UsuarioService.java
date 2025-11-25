@@ -39,7 +39,7 @@ public class UsuarioService {
         u.setId(dto.getId());
 
         Empresa e = new Empresa();
-        e.setId(dto.getEmpresaId());
+        e.setId(dto.getEmpresaId()); 
         u.setEmpresa(e);
 
         u.setNombres(dto.getNombres());
