@@ -9,14 +9,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # -----------------------------
-    # CHECKOUT
-    # -----------------------------
-    - name: Checkout repository
+    - name: Set up job
       uses: actions/checkout@v3
 
     # -----------------------------
-    # PRE-CHECK SSH
+    # TEST SSH CONNECTION
     # -----------------------------
     - name: Test SSH connection
       uses: appleboy/ssh-action@v1.0.3
@@ -29,7 +26,7 @@ jobs:
           echo "SSH OK (pre-check)"
 
     # -----------------------------
-    # SETUP JAVA
+    # JDK 17
     # -----------------------------
     - name: Set up JDK 17
       uses: actions/setup-java@v3
@@ -55,7 +52,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     # -----------------------------
-    # BUILD + PUSH DOCKER
+    # BUILD + PUSH IMAGE
     # -----------------------------
     - name: Build and push Docker image
       run: |
@@ -63,7 +60,7 @@ jobs:
         docker push ghcr.io/cesarcanro1/proyecto-backend:latest
 
     # -----------------------------
-    # DEPLOY TO MICROK8S
+    # DEPLOY TO K8S
     # -----------------------------
     - name: Deploy to K8s
       uses: appleboy/ssh-action@v1.0.3
@@ -73,7 +70,7 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         script_stop: false
         script: |
-          echo "Actualizando imagen del backend..."
+          echo "Actualizando imagen en Kubernetes..."
           sudo microk8s kubectl -n proyecto-web set image deployment/backend backend=ghcr.io/cesarcanro1/proyecto-backend:latest
           sudo microk8s kubectl -n proyecto-web rollout restart deployment backend
           sudo microk8s kubectl -n proyecto-web rollout status deployment backend --timeout=60s
@@ -82,4 +79,4 @@ jobs:
     # DONE
     # -----------------------------
     - name: Complete job
-      run: echo "Deploy completado correctamente"
+      run: echo "Deploy completado sin errores"
