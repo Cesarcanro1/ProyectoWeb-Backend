@@ -30,7 +30,7 @@ import lombok.Setter;
 @SQLDelete(sql = "UPDATE actividad SET status = 1 WHERE id = ?") // soft delete
 public class Actividad implements Serializable {
 
-    @Id
+    @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

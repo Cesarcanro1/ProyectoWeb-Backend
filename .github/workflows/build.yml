@@ -1,74 +1,79 @@
-name: Build and Deploy Backend
+name: Build & Deploy Backend
 
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/cesarcanro1/proyecto-backend
+  NAMESPACE: proyecto-web
+  DEPLOYMENT: backend
 
 jobs:
+
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    # -----------------------------
-    # TEST SSH
-    # -----------------------------
-    - name: Test SSH connection
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          echo "SSH OK"
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
 
-    # -----------------------------
-    # Set up Java
-    # -----------------------------
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - name: Build JAR
+        run: mvn -B -DskipTests package
 
-    # -----------------------------
-    # Build backend
-    # -----------------------------
-    - name: Build backend without tests
-      run: |
-        ./mvnw -DskipTests package
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    # -----------------------------
-    # Login GHCR
-    # -----------------------------
-    - name: Login to GHCR
-      uses: docker/login-action@v2
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
 
-    # -----------------------------
-    # Build and push Docker image
-    # -----------------------------
-    - name: Build and Push
-      run: |
-        docker build -t ghcr.io/cesarcanro1/proyecto-backend:latest .
-        docker push ghcr.io/cesarcanro1/proyecto-backend:latest
+  deploy:
+    needs: build
+    runs-on: self-hosted
 
-    # -----------------------------
-    # Deploy to MicroK8s
-    # -----------------------------
-    - name: Deploy to MicroK8s
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_KEY }}
-        script: |
-          echo "Actualizando imagen..."
-          sudo microk8s kubectl -n proyecto-web set image deployment/backend backend=ghcr.io/cesarcanro1/proyecto-backend:latest
-          sudo microk8s kubectl -n proyecto-web rollout restart deployment backend
-          sudo microk8s kubectl -n proyecto-web rollout status deployment backend --timeout=60s
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Renderiza el host del Ingress con el IP real de la VM
+      - name: Inject NODE_IP into k8s.yaml
+        run: |
+          NODE_IP=$(hostname -I | awk '{print $1}')
+          echo "NODE_IP=${NODE_IP}"
+
+          sed -i "s/backend.\${NODE_IP}.nip.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
+
+      - name: Apply manifests & rollout (local MicroK8s)
+        run: |
+          microk8s kubectl apply -f k8s.yaml
+
+          microk8s kubectl -n proyecto-web set image deploy/backend \
+            backend=ghcr.io/cesarcanro1/proyecto-backend:latest
+
+          microk8s kubectl -n proyecto-web rollout status deploy/backend
+
+          microk8s kubectl -n proyecto-web get ingress backend -o yaml | sed -n '1,120p'
+          microk8s kubectl -n proyecto-web get pods -l app=backend -o wide
