@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 env:
   IMAGE: ghcr.io/cesarcanro1/proyectoweb-backend
@@ -23,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -33,14 +34,14 @@ jobs:
       - name: Build JAR
         run: mvn -B -DskipTests package
 
-      - name: Login to GHCR
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push image
+      - name: Build & Push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -52,26 +53,36 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: self-hosted
+    runs-on: [self-hosted, microk8s]
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Replace NODE_IP in k8s.yaml
+      - name: Obtener IP del nodo
+        id: nodeip
         run: |
           NODE_IP=$(hostname -I | awk '{print $1}')
+          echo "NODE_IP=$NODE_IP" >> $GITHUB_ENV
           echo "Usando NODE_IP: $NODE_IP"
-          sed -i "s/backend.10.43.103.143.nip.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
 
-      - name: Apply manifests (MicroK8s)
+      - name: Actualizar dominio nip.io en k8s.yaml
+        run: |
+          sed -i "s/backend\.10\.43\.103\.143\.nip\.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
+
+      - name: Aplicar manifiestos a MicroK8s
         run: |
           sudo microk8s kubectl apply -f k8s.yaml
 
-          sudo microk8s kubectl -n proyecto-web set image deployment/backend \
+      - name: Actualizar imagen del deployment
+        run: |
+          sudo microk8s kubectl -n ${{ env.NAMESPACE }} set image deployment/${{ env.DEPLOYMENT }} \
             backend=${{ env.IMAGE }}:latest
 
-          sudo microk8s kubectl -n proyecto-web rollout status deployment/backend --timeout=90s
+      - name: Esperar rollout
+        run: |
+          sudo microk8s kubectl -n ${{ env.NAMESPACE }} rollout status deployment/${{ env.DEPLOYMENT }} --timeout=120s
 
-          sudo microk8s kubectl -n proyecto-web get pods -o wide
-
+      - name: Mostrar pods en ejecución
+        run: |
+          sudo microk8s kubectl -n ${{ env.NAMESPACE }} get pods -o wide
