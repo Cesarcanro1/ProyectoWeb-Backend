@@ -24,7 +24,8 @@ spec:
         fsGroup: 1000
       containers:
         - name: backend
-          image: ghcr.io/cesarcanro1/proyecto-backend:latest
+          image: ghcr.io/cesarcanro1/proyectoweb-backend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
 
@@ -67,7 +68,7 @@ spec:
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: backend-secrets 
+                  name: backend-secrets
                   key: SPRING_DATASOURCE_PASSWORD
 
           resources:

@@ -7,10 +7,10 @@ on:
 
 permissions:
   contents: read
-  packages: write 
+  packages: write
 
 env:
-  IMAGE: ghcr.io/cesarcanro1/proyecto-backend
+  IMAGE: ghcr.io/cesarcanro1/proyectoweb-backend
   NAMESPACE: proyecto-web
   DEPLOYMENT: backend
 
@@ -48,58 +48,30 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE }}:latest
-            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:${{ github.sha }}
 
   deploy:
     needs: build
     runs-on: self-hosted
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Renderiza el host del Ingress con el IP real de la VM
-      - name: Inject NODE_IP into k8s.yaml
+      - name: Replace NODE_IP in k8s.yaml
         run: |
           NODE_IP=$(hostname -I | awk '{print $1}')
-          echo "NODE_IP=${NODE_IP}"
-          sed -i "s/backend.\${NODE_IP}.nip.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
+          echo "Usando NODE_IP: $NODE_IP"
+          sed -i "s/backend.10.43.103.143.nip.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
 
-      - name: Apply manifests & rollout (local MicroK8s)
+      - name: Apply manifests (MicroK8s)
         run: |
-          set -e
+          sudo microk8s kubectl apply -f k8s.yaml
 
-          echo ">>> Esperando a que microk8s esté ready..."
-          sudo microk8s status --wait-ready
+          sudo microk8s kubectl -n proyecto-web set image deployment/backend \
+            backend=${{ env.IMAGE }}:latest
 
-          echo ">>> Aplicando k8s.yaml (hasta 3 intentos si falla la conexión)..."
-          ATTEMPTS=0
-          MAX_ATTEMPTS=3
-          until [ $ATTEMPTS -ge $MAX_ATTEMPTS ]
-          do
-            if sudo microk8s kubectl apply -f k8s.yaml; then
-              echo "kubectl apply OK"
-              break
-            fi
+          sudo microk8s kubectl -n proyecto-web rollout status deployment/backend --timeout=90s
 
-            ATTEMPTS=$((ATTEMPTS+1))
-            echo "kubectl apply falló (intento $ATTEMPTS/$MAX_ATTEMPTS), esperando 5s y reintentando..."
-            sleep 5
-          done
+          sudo microk8s kubectl -n proyecto-web get pods -o wide
 
-          if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
-            echo "kubectl apply siguió fallando después de $MAX_ATTEMPTS intentos :("
-            exit 1
-          fi
-
-          echo ">>> Actualizando imagen del deployment..."
-          sudo microk8s kubectl -n ${NAMESPACE} set image deploy/${DEPLOYMENT} \
-            backend=${IMAGE}:latest
-
-          echo ">>> Esperando a que termine el rollout..."
-          sudo microk8s kubectl -n ${NAMESPACE} rollout status deploy/${DEPLOYMENT}
-
-          echo ">>> Info de debug:"
-          sudo microk8s kubectl -n ${NAMESPACE} get svc
-          sudo microk8s kubectl -n ${NAMESPACE} get ingress
-          sudo microk8s kubectl -n ${NAMESPACE} get pods -o wide
