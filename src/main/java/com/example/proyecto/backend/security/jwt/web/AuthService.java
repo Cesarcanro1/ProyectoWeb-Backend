@@ -37,7 +37,7 @@ public class AuthService {
 
             var claims = new HashMap<String, Object>();
             claims.put("userId", u.getId());
-            claims.put("roles", List.of("ROLE_USER")); // por ahora fijo
+            claims.put("role", u.getRole().name()); // <-- EL ROL REAL
             if (u.getEmpresa() != null) claims.put("companyId", u.getEmpresa().getId());
 
             String accessToken = jwtUtil.generateAccessToken(user, claims);
@@ -46,7 +46,7 @@ public class AuthService {
             out.setAccessToken(accessToken);
             out.setUserId(u.getId());
             out.setEmail(u.getEmail());
-            out.setRoles(List.of("USER"));
+            out.setRoles(List.of(u.getRole().name()));  // <-- EL ROL REAL
             out.setCompanyId(u.getEmpresa() != null ? u.getEmpresa().getId() : null);
             return out;
 

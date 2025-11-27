@@ -25,22 +25,25 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        var u = userRepo.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Not found"));
 
-        // solo permiten login los status == 0
+        var u = userRepo.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+
+        // status 0 = activo
         if (u.getStatus() != 0) {
-            throw new DisabledException("User soft-deleted");
+            throw new DisabledException("Usuario eliminado (soft delete)");
         }
 
-        // Por ahora, rol por defecto 
-        var authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        // autoridad REAL basada en tu enum Role
+        var authorities = List.of(
+                new SimpleGrantedAuthority("ROLE_" + u.getRole().name())
+        );
 
         return User.builder()
-                .username(u.getEmail())     // unique
-                .password(u.getPassword())  // BCrypt
+                .username(u.getEmail())
+                .password(u.getPassword())  // ya viene BCrypt
                 .authorities(authorities)
-                .disabled(false)            // ya validamos status arriba
+                .disabled(false)
                 .accountExpired(false)
                 .credentialsExpired(false)
                 .accountLocked(false)

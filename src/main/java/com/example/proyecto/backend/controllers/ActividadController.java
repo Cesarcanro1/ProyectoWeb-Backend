@@ -26,9 +26,8 @@ public class ActividadController {
         this.service = service;
     }
 
-    // ===========================
+   
     // CONSULTAR (HU-07)
-    // ===========================
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public List<ActividadDTO> obtenerTodos(@RequestParam(required = false) Long procesoId) {
@@ -42,27 +41,27 @@ public class ActividadController {
         return service.obtenerPorId(id);
     }
 
-    // ===========================
+    
     // CREAR (HU-08)
-    // ===========================
+    
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     public ActividadDTO crear(@RequestBody ActividadDTO dto) {
         return service.crear(dto);
     }
 
-    // ===========================
+    
     // ACTUALIZAR (HU-09)
-    // ===========================
+    
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     public ActividadDTO actualizar(@PathVariable Long id, @RequestBody ActividadDTO dto) {
         return service.actualizar(id, dto);
     }
 
-    // ===========================
+    
     // ELIMINAR (HU-10)
-    // ===========================
+    
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {

@@ -11,31 +11,30 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.proyecto.backend.dtos.LoginDTO;
 import com.example.proyecto.backend.dtos.TokenDTO;
 import com.example.proyecto.backend.dtos.UsuarioDTO;
-
 import com.example.proyecto.backend.services.UsuarioService;
 
 import lombok.RequiredArgsConstructor;
 
-
 @RestController
-@RequestMapping("/api/auth") // 👈 importante: tus rutas protegidas deberían ir con /api/**
-@CrossOrigin(origins = "http://localhost:4200") // ajusta si cambias el front
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+@CrossOrigin(origins = "*")  // Ajusta según tu front
 public class AuthController {
 
-    private AuthService authService;
-    private UsuarioService usuarioService;
+    private final AuthService authService;
+    private final UsuarioService usuarioService;
 
-    // LOGIN: devuelve el TokenDTO con el JWT
+    // LOGIN: devuelve TokenDTO con JWT
     @PostMapping("/login")
     public ResponseEntity<TokenDTO> login(@RequestBody LoginDTO dto) {
         TokenDTO token = authService.login(dto);
         return ResponseEntity.ok(token);
     }
 
-    // REGISTER: crea un usuario nuevo (sin necesitar JWT)
+    // REGISTER: crea un usuario sin necesidad de token
     @PostMapping("/register")
     public ResponseEntity<UsuarioDTO> register(@RequestBody UsuarioDTO dto) {
-        UsuarioDTO creado = usuarioService.crearSinValidacion(dto);
+        UsuarioDTO creado = usuarioService.crear(dto); // usamos crear normal
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 }

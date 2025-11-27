@@ -4,7 +4,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -24,7 +23,7 @@ public class JwtUtil {
 
     private final SecretKey key;
     private final long accessExpMinutes;
-    private final Duration clockSkew = Duration.ofSeconds(60); // tolerancia 60s
+    private final Duration clockSkew = Duration.ofSeconds(60);
 
     public JwtUtil(
             @Value("${security.jwt.secret}") String base64Secret,
@@ -34,9 +33,13 @@ public class JwtUtil {
         this.accessExpMinutes = accessExpMinutes;
     }
 
+    
+    // GENERAR TOKEN 
+
     public String generateAccessToken(UserDetails user, Map<String, Object> extraClaims) {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(accessExpMinutes * 60);
+
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(user.getUsername())
@@ -46,31 +49,48 @@ public class JwtUtil {
                 .compact();
     }
 
+    
+    // VALIDACIÓN 
+   
+
     public boolean isValid(String token, UserDetails user) {
         try {
-            Claims c = parseAllClaims(token);
-            String username = c.getSubject();
-            return username.equals(user.getUsername()) && c.getExpiration().after(new Date());
+            Claims claims = parseAllClaims(token);
+            String username = claims.getSubject();
+            return username.equals(user.getUsername()) &&
+                   claims.getExpiration().after(new Date());
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
+    
+    // GETTERS DE CLAIMS 
+  
+
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
-    public List<String> extractRoles(String token) {
-        Object roles = extractClaim(token, claims -> claims.get("roles"));
-        if (roles instanceof List<?> list) {
-            return list.stream().map(String::valueOf).toList();
-        }
-        return List.of();
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> (String) claims.get("role"));
+    }
+
+    public Long extractUserId(String token) {
+        return extractClaim(token, claims -> claims.get("userId", Long.class));
+    }
+
+    public Long extractCompanyId(String token) {
+        return extractClaim(token, claims -> claims.get("companyId", Long.class));
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
         return resolver.apply(parseAllClaims(token));
     }
+
+    
+    // LECTURA DEL TOKEN 
+    
 
     public Claims parseAllClaims(String token) {
         return Jwts.parser()

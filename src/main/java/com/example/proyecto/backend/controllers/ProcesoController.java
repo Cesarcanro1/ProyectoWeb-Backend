@@ -25,9 +25,9 @@ public class ProcesoController {
         this.service = service;
     }
 
-    // ===========================
+    
     // CONSULTAS (HU-07)
-    // ===========================
+   
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public List<ProcesoDTO> obtenerTodos() {
@@ -40,27 +40,26 @@ public class ProcesoController {
         return service.obtenerPorId(id);
     }
 
-    // ===========================
+    
     // CREAR (HU-04)
-    // ===========================
+    
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     public ProcesoDTO crear(@RequestBody ProcesoDTO dto) {
         return service.crear(dto);
     }
 
-    // ===========================
+    
     // ACTUALIZAR (HU-05)
-    // ===========================
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
     public ProcesoDTO actualizar(@PathVariable Long id, @RequestBody ProcesoDTO dto) {
         return service.actualizar(id, dto);
     }
 
-    // ===========================
+
     // ELIMINAR (HU-06)
-    // ===========================
+   
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {

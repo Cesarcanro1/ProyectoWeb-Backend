@@ -25,7 +25,8 @@ public class UsuarioService {
     private final SecurityUtils securityUtils;
     private final PasswordEncoder passwordEncoder;
 
-    // ================= DTO MAPPING =================
+    // DTO MAPPING
+    
 
     private UsuarioDTO toDTO(Usuario u) {
         UsuarioDTO dto = new UsuarioDTO();
@@ -49,7 +50,9 @@ public class UsuarioService {
         u.setNombres(dto.getNombres());
         u.setApellidos(dto.getApellidos());
         u.setEmail(dto.getEmail());
-        u.setRole(dto.getRole() != null ? dto.getRole() : Role.USER);
+
+        // Rol solo si viene del DTO
+        u.setRole(dto.getRole());
 
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
             u.setPassword(
@@ -60,29 +63,12 @@ public class UsuarioService {
         return u;
     }
 
-    // ============== PUBLIC SIGNUP (NO REQUIERE TOKEN) ==============
-    public UsuarioDTO crearSinValidacion(UsuarioDTO dto) {
-
-        if (repo.existsByEmail(dto.getEmail())) {
-            throw new IllegalArgumentException("Email ya existe");
-        }
-
-        if (dto.getEmpresaId() == null) {
-            throw new IllegalArgumentException("empresaId es obligatorio");
-        }
-
-        // rol por defecto para usuarios creados públicamente
-        dto.setRole(Role.USER);
-
-        Usuario u = toEntity(dto, true);
-        return toDTO(repo.save(u));
-    }
-
-    // ================= QUERIES =================
+    
+    // QUERIES
+  
 
     public List<UsuarioDTO> obtenerTodos() {
         Long empresaId = validarEmpresaDelToken();
-
         return repo.findAllByEmpresa_Id(empresaId).stream()
                 .map(this::toDTO)
                 .toList();
@@ -91,31 +77,29 @@ public class UsuarioService {
     public UsuarioDTO obtenerPorId(Long id) {
         Usuario u = repo.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado"));
-
         validarAccesoEmpresa(u.getEmpresa().getId());
         return toDTO(u);
     }
 
-    // ================= CREAR =================
+    
+    // CREAR USUARIO
+   
 
     public UsuarioDTO crear(UsuarioDTO dto) {
-        validarRolAdmin();
+        Long empresaId = validarEmpresaDelToken();
+
+        validarRolAdmin(); // solo ADMIN crea usuarios
         validarAccesoEmpresa(dto.getEmpresaId());
 
         if (repo.existsByEmail(dto.getEmail())) {
             throw new IllegalArgumentException("Email ya existe");
         }
 
-        if (dto.getRole() == null) {
-            dto.setRole(Role.USER);
-        }
-
         Usuario nuevo = toEntity(dto, true);
         return toDTO(repo.save(nuevo));
     }
 
-    // ================= CREAR ADMIN INICIAL =================
-
+    // Crear usuario ADMIN inicial al crear empresa
     public UsuarioDTO crearAdminInicial(Long empresaId, String email, String nombres, String apellidos, String password) {
 
         if (repo.existsByEmail(email)) {
@@ -134,29 +118,30 @@ public class UsuarioService {
         return toDTO(repo.save(u));
     }
 
-    // ================= ACTUALIZAR =================
+    // ACTUALIZAR
+
 
     public UsuarioDTO actualizar(Long id, UsuarioDTO datos) {
-
         Usuario actual = repo.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado"));
 
         validarAccesoEmpresa(actual.getEmpresa().getId());
 
-        // No cambiar empresa nunca
+        // Empresa no se puede cambiar
         if (!actual.getEmpresa().getId().equals(datos.getEmpresaId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes cambiar la empresa del usuario");
         }
 
-        // Validar cambio de rol
+        // Rol solo lo modifica un ADMIN
         if (datos.getRole() != null && datos.getRole() != actual.getRole()) {
             validarRolAdmin();
             actual.setRole(datos.getRole());
         }
 
-        if (datos.getNombres() != null) actual.setNombres(datos.getNombres());
-        if (datos.getApellidos() != null) actual.setApellidos(datos.getApellidos());
+        actual.setNombres(datos.getNombres());
+        actual.setApellidos(datos.getApellidos());
 
+        // Email
         if (datos.getEmail() != null && !datos.getEmail().equalsIgnoreCase(actual.getEmail())) {
             if (repo.existsByEmail(datos.getEmail())) {
                 throw new IllegalArgumentException("Email ya existe");
@@ -164,6 +149,7 @@ public class UsuarioService {
             actual.setEmail(datos.getEmail());
         }
 
+        // Password
         if (datos.getPassword() != null && !datos.getPassword().isBlank()) {
             actual.setPassword(passwordEncoder.encode(datos.getPassword()));
         }
@@ -171,25 +157,21 @@ public class UsuarioService {
         return toDTO(repo.save(actual));
     }
 
-    // ================= ELIMINAR =================
+    // ELIMINAR
+    
 
     public void eliminar(Long id) {
         validarRolAdmin();
-
         Usuario u = repo.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado"));
 
         validarAccesoEmpresa(u.getEmpresa().getId());
-
-        // impedir que un admin se elimine a sí mismo
-        if (u.getEmail().equalsIgnoreCase(securityUtils.currentEmail())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes eliminarte a ti mismo");
-        }
-
         repo.delete(u);
     }
 
-    // ================= VALIDACIONES =================
+   
+    // VALIDACIONES
+    
 
     private Long validarEmpresaDelToken() {
         Long empresaId = securityUtils.currentCompanyId();
@@ -208,10 +190,8 @@ public class UsuarioService {
 
     private void validarRolAdmin() {
         String email = securityUtils.currentEmail();
-
         Usuario u = repo.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-
         if (u.getRole() != Role.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo ADMIN puede realizar esta acción");
         }

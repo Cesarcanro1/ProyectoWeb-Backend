@@ -1,36 +1,68 @@
 package com.example.proyecto.backend.security.jwt;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-import com.example.proyecto.backend.repository.UsuarioRepository;
-
-import lombok.RequiredArgsConstructor;
+import com.example.proyecto.backend.entity.Role;
 
 @Component
-@RequiredArgsConstructor
 public class SecurityUtils {
 
-    private final UsuarioRepository userRepo;
+    private final JwtUtil jwtUtil;
 
-    public String currentEmail() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        return (auth != null) ? auth.getName() : null;
+    public SecurityUtils(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
     }
 
-    public Long currentCompanyId() {
-        var email = currentEmail();
-        if (email == null) return null;
-        return userRepo.findByEmail(email)
-                .map(u -> u.getEmpresa() != null ? u.getEmpresa().getId() : null)
-                .orElse(null);
-    }
+    // =USER 
 
     public Long currentUserId() {
-        var email = currentEmail();
-        if (email == null) return null;
-        return userRepo.findByEmail(email)
-                .map(u -> u.getId())
-                .orElse(null);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getCredentials() == null) return null;
+
+        String token = auth.getCredentials().toString();
+        return jwtUtil.extractClaim(token, c -> c.get("userId", Long.class));
+    }
+
+    public String currentEmail() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return null;
+        return auth.getName(); // subject del token = email
+    }
+
+    // ROLE 
+
+    public Role currentRole() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getCredentials() == null) return null;
+
+        String token = auth.getCredentials().toString();
+        String roleName = jwtUtil.extractClaim(token, c -> c.get("role", String.class));
+
+        if (roleName == null) return null;
+        return Role.valueOf(roleName); // convierte "ADMIN" → Role.ADMIN
+    }
+
+    public boolean isAdmin() {
+        return currentRole() == Role.ADMIN;
+    }
+
+    public boolean isEditor() {
+        return currentRole() == Role.EDITOR;
+    }
+
+    public boolean isViewer() {
+        return currentRole() == Role.VIEWER;
+    }
+
+    //EMPRESA 
+
+    public Long currentCompanyId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getCredentials() == null) return null;
+
+        String token = auth.getCredentials().toString();
+        return jwtUtil.extractClaim(token, c -> c.get("companyId", Long.class));
     }
 }
