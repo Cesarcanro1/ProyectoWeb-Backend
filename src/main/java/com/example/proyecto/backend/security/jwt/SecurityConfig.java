@@ -70,7 +70,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
 
-        // DEV y PROD (nip.io devuelve siempre *dominios dinámicos*)
+        // DEV y PROD (nip.io devuelve siempre *dominios dinámicos*) 
         cfg.addAllowedOriginPattern("*");
         cfg.addAllowedHeader("*");
         cfg.addAllowedMethod("*");
