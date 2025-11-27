@@ -3,7 +3,6 @@ package com.example.proyecto.backend.security.jwt;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,6 +12,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,33 +27,37 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
 
     @Bean
-    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
         return cfg.getAuthenticationManager();
     }
 
-    // ⬅️ BYPASS TOTAL: nada de /api/public/** ni /error pasa por los filtros de Spring Security
+    // Endpoints ignorados por completo (no pasan por filtros)
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        return web -> web.ignoring().requestMatchers(
-            "/error",
-            "/api/public/**"
-        );
+        return web -> web.ignoring()
+            .requestMatchers("/error", "/api/public/**");
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
-            .cors(Customizer.withDefaults())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // ⬅️ por si algún forward/handler manda a /error
-                .dispatcherTypeMatchers(jakarta.servlet.DispatcherType.ERROR,
-                                        jakarta.servlet.DispatcherType.FORWARD).permitAll()
-                .requestMatchers("/auth/login", "/api/auth/**").permitAll()
+                .dispatcherTypeMatchers(
+                    jakarta.servlet.DispatcherType.ERROR,
+                    jakarta.servlet.DispatcherType.FORWARD
+                ).permitAll()
+
+                .requestMatchers("/auth/login", "/api/auth/**")
+                    .permitAll()
+
                 .anyRequest().authenticated()
             )
             .userDetailsService(uds)
@@ -59,20 +65,20 @@ public class SecurityConfig {
             .build();
     }
 
+    // ⭐ CORS ÚNICO, GLOBAL, LIMPIO y COMPATIBLE CON DEPLOY EN MICROK8S
     @Bean
-public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
-    org.springframework.web.cors.CorsConfiguration config = new org.springframework.web.cors.CorsConfiguration();
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration cfg = new CorsConfiguration();
 
-    config.addAllowedOriginPattern("*");  // permite cualquier origen (necesario con nip.io)
-    config.addAllowedHeader("*");
-    config.addAllowedMethod("*");
-    config.setAllowCredentials(false);  // como usas LOGIN normal, debe ser false
+        // DEV y PROD (nip.io devuelve siempre *dominios dinámicos*)
+        cfg.addAllowedOriginPattern("*");
+        cfg.addAllowedHeader("*");
+        cfg.addAllowedMethod("*");
 
-    org.springframework.web.cors.UrlBasedCorsConfigurationSource source =
-            new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
-    source.registerCorsConfiguration("/**", config);
+        cfg.setAllowCredentials(false); // correcto para login por API
 
-    return source;
-}
-
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return source;
+    }
 }
