@@ -2,6 +2,7 @@ package com.example.proyecto.backend.controllers;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,38 +20,52 @@ import com.example.proyecto.backend.services.GatewayService;
 @RequestMapping("/api/gateways")
 public class GatewayController {
 
-    private final GatewayService gatewayService;
+    private final GatewayService service;
 
-    public GatewayController(GatewayService gatewayService) {
-        this.gatewayService = gatewayService;
+    public GatewayController(GatewayService service) {
+        this.service = service;
     }
 
-    // Obtener todos o por proceso ?procesoId=
+    
+    // CONSULTAR (Roles: ADMIN, EDITOR, VIEWER)
+    
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public List<GatewayDTO> obtenerTodos(@RequestParam(required = false) Long procesoId) {
-        if (procesoId != null) {
-            return gatewayService.obtenerPorProceso(procesoId);
-        }
-        return gatewayService.obtenerTodos();
+        if (procesoId != null) return service.obtenerPorProceso(procesoId);
+        return service.obtenerTodos();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public GatewayDTO obtenerPorId(@PathVariable Long id) {
-        return gatewayService.obtenerPorId(id);
+        return service.obtenerPorId(id);
     }
 
+    
+    // CREAR (Roles: ADMIN, EDITOR)
+    
     @PostMapping
-    public GatewayDTO crear(@RequestBody GatewayDTO gatewayDTO) {
-        return gatewayService.crear(gatewayDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public GatewayDTO crear(@RequestBody GatewayDTO dto) {
+        return service.crear(dto);
     }
 
+    
+    // ACTUALIZAR (Roles: ADMIN, EDITOR)
+    
     @PutMapping("/{id}")
-    public GatewayDTO actualizar(@PathVariable Long id, @RequestBody GatewayDTO gatewayDTO) {
-        return gatewayService.actualizar(id, gatewayDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public GatewayDTO actualizar(@PathVariable Long id, @RequestBody GatewayDTO dto) {
+        return service.actualizar(id, dto);
     }
 
+    
+    // ELIMINAR (Roles: SOLO ADMIN)
+    
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {
-        gatewayService.eliminar(id);
+        service.eliminar(id);
     }
 }

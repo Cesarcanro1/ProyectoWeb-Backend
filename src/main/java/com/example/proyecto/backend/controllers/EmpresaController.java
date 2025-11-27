@@ -1,5 +1,6 @@
 package com.example.proyecto.backend.controllers;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,41 +17,51 @@ import com.example.proyecto.backend.services.EmpresaService;
 @RequestMapping("/api/empresas")
 public class EmpresaController {
 
-    private final EmpresaService empresaService;
+    private final EmpresaService service;
 
-    public EmpresaController(EmpresaService empresaService) {
-        this.empresaService = empresaService;
+    public EmpresaController(EmpresaService service) {
+        this.service = service;
     }
 
-    // Obtener la empresa asociada al usuario logueado
+  
+    // REGISTRO DE EMPRESA (PUBLIC)
+    @PostMapping("/registrar")
+    public EmpresaDTO registrar(@RequestBody EmpresaDTO dto) {
+        return service.registrarEmpresa(dto);
+    }
+
+    
+    // DATOS DE MI EMPRESA
+    // Para cualquier usuario autenticado de la empresa.
     @GetMapping("/mi-empresa")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public EmpresaDTO obtenerMiEmpresa() {
-        return empresaService.obtenerMiEmpresa();
+        return service.obtenerMiEmpresa();
     }
 
-    // Bloquea los demás endpoints por ahora
-    @GetMapping
-    public void obtenerTodas() {
-        throw new RuntimeException("No autorizado");
-    }
-
+    
+    // VER EMPRESA POR ID
+    // Solo si es tu propia empresa (service valida esto también).
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public EmpresaDTO obtenerPorId(@PathVariable Long id) {
-        return empresaService.obtenerPorId(id);
+        return service.obtenerPorId(id);
     }
 
-    @PostMapping
-    public void crear(@RequestBody EmpresaDTO empresaDTO) {
-        throw new RuntimeException("No autorizado");
-    }
-
+    
+    // ACTUALIZAR MI EMPRESA
+    
     @PutMapping("/{id}")
-    public EmpresaDTO actualizar(@PathVariable Long id, @RequestBody EmpresaDTO empresaDTO) {
-        return empresaService.actualizar(id, empresaDTO);
+    @PreAuthorize("hasRole('ADMIN')")
+    public EmpresaDTO actualizar(@PathVariable Long id, @RequestBody EmpresaDTO dto) {
+        return service.actualizar(id, dto);
     }
 
+    
+    // ELIMINACIÓN BLOQUEADA
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {
-        throw new RuntimeException("No autorizado");
+        throw new RuntimeException("Eliminar empresa no está permitido.");
     }
 }

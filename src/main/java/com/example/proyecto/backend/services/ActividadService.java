@@ -24,11 +24,11 @@ public class ActividadService {
     private final ProcesoRepository procesoRepo;
     private final SecurityUtils securityUtils;
 
-    // -------- helpers --------
+    // ========== MAPPERS ==========
     private ActividadDTO toDTO(Actividad a) {
         ActividadDTO dto = new ActividadDTO();
         dto.setId(a.getId());
-        dto.setProcesoId(a.getProceso().getId()); 
+        dto.setProcesoId(a.getProceso().getId());
         dto.setNombre(a.getNombre());
         dto.setTipo(a.getTipo());
         dto.setDescripcion(a.getDescripcion());
@@ -39,55 +39,61 @@ public class ActividadService {
     private Actividad toEntity(ActividadDTO dto) {
         Actividad a = new Actividad();
         a.setId(dto.getId());
+
         Proceso p = new Proceso();
         p.setId(dto.getProcesoId());
         a.setProceso(p);
+
         a.setNombre(dto.getNombre());
         a.setTipo(dto.getTipo());
         a.setDescripcion(dto.getDescripcion());
         a.setRolResponsable(dto.getRolResponsable());
+
         return a;
     }
 
-    // -------- seguridad / validaciones --------
-    private Long currentCompanyIdOr403() {
-        Long cid = securityUtils.currentCompanyId();
-        if (cid == null)
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
-        return cid;
-    }
-
+    // ========== VALIDACIÓN ==========
     private void validarAccesoProceso(Long procesoId) {
-        Long currentCid = currentCompanyIdOr403();
-        Long ownerCid = procesoRepo.findById(procesoId)
-                .map(p -> p.getEmpresa() != null ? p.getEmpresa().getId() : null)
+        Long current = securityUtils.currentCompanyId();
+        if (current == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
+
+        Long owner = procesoRepo.findById(procesoId)
+                .map(p -> p.getEmpresa().getId())
                 .orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
-        if (!currentCid.equals(ownerCid)) {
+
+        if (!owner.equals(current))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado al proceso");
-        }
     }
 
     private void validarAccesoActividad(Actividad a) {
-        Long currentCid = currentCompanyIdOr403();
-        Long ownerCid = a.getProceso().getEmpresa() != null ? a.getProceso().getEmpresa().getId() : null;
-        if (!currentCid.equals(ownerCid)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado a la actividad");
-        }
+        Long current = securityUtils.currentCompanyId();
+        Long owner = a.getProceso().getEmpresa().getId();
+        if (!current.equals(owner))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
     }
 
-    // -------- CRUD con scoping --------
+    // ========== CRUD ==========
     public List<ActividadDTO> obtenerTodos() {
-        Long currentCid = currentCompanyIdOr403();
-        return repo.findAllByProceso_Empresa_Id(currentCid).stream().map(this::toDTO).toList();
+        Long empresaId = securityUtils.currentCompanyId();
+        if (empresaId == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
+
+        return repo.findAllByProceso_Empresa_Id(empresaId).stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public List<ActividadDTO> obtenerPorProceso(Long procesoId) {
         validarAccesoProceso(procesoId);
-        return repo.findAllByProceso_Id(procesoId).stream().map(this::toDTO).toList();
+        return repo.findAllByProceso_Id(procesoId).stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public ActividadDTO obtenerPorId(Long id) {
-        Actividad a = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Actividad no encontrada"));
+        Actividad a = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Actividad no encontrada"));
         validarAccesoActividad(a);
         return toDTO(a);
     }
@@ -99,9 +105,10 @@ public class ActividadService {
     }
 
     public ActividadDTO actualizar(Long id, ActividadDTO dto) {
-        Actividad a = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Actividad no encontrada"));
-        validarAccesoActividad(a);               // valida empresa actual
-        validarAccesoProceso(dto.getProcesoId()); // valida nueva empresa si cambia
+        Actividad a = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Actividad no encontrada"));
+        validarAccesoActividad(a);
+        validarAccesoProceso(dto.getProcesoId());
 
         Proceso p = new Proceso();
         p.setId(dto.getProcesoId());
@@ -111,11 +118,13 @@ public class ActividadService {
         a.setTipo(dto.getTipo());
         a.setDescripcion(dto.getDescripcion());
         a.setRolResponsable(dto.getRolResponsable());
+
         return toDTO(repo.save(a));
     }
 
     public void eliminar(Long id) {
-        Actividad a = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Actividad no encontrada"));
+        Actividad a = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Actividad no encontrada"));
         validarAccesoActividad(a);
         repo.delete(a);
     }

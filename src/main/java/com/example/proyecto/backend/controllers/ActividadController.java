@@ -2,6 +2,7 @@ package com.example.proyecto.backend.controllers;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,38 +20,52 @@ import com.example.proyecto.backend.services.ActividadService;
 @RequestMapping("/api/actividades")
 public class ActividadController {
 
-    private final ActividadService actividadService;
+    private final ActividadService service;
 
-    public ActividadController(ActividadService actividadService) {
-        this.actividadService = actividadService;
+    public ActividadController(ActividadService service) {
+        this.service = service;
     }
 
-    // Obtener todas o filtrar por proceso ?procesoId=
+    // ===========================
+    // CONSULTAR (HU-07)
+    // ===========================
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public List<ActividadDTO> obtenerTodos(@RequestParam(required = false) Long procesoId) {
-        if (procesoId != null) {
-            return actividadService.obtenerPorProceso(procesoId);
-        }
-        return actividadService.obtenerTodos();
+        if (procesoId != null) return service.obtenerPorProceso(procesoId);
+        return service.obtenerTodos();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public ActividadDTO obtenerPorId(@PathVariable Long id) {
-        return actividadService.obtenerPorId(id);
+        return service.obtenerPorId(id);
     }
 
+    // ===========================
+    // CREAR (HU-08)
+    // ===========================
     @PostMapping
-    public ActividadDTO crear(@RequestBody ActividadDTO actividadDTO) {
-        return actividadService.crear(actividadDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public ActividadDTO crear(@RequestBody ActividadDTO dto) {
+        return service.crear(dto);
     }
 
+    // ===========================
+    // ACTUALIZAR (HU-09)
+    // ===========================
     @PutMapping("/{id}")
-    public ActividadDTO actualizar(@PathVariable Long id, @RequestBody ActividadDTO actividadDTO) {
-        return actividadService.actualizar(id, actividadDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public ActividadDTO actualizar(@PathVariable Long id, @RequestBody ActividadDTO dto) {
+        return service.actualizar(id, dto);
     }
 
+    // ===========================
+    // ELIMINAR (HU-10)
+    // ===========================
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {
-        actividadService.eliminar(id);
+        service.eliminar(id);
     }
 }

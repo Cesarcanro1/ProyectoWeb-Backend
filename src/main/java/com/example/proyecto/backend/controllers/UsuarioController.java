@@ -2,6 +2,7 @@ package com.example.proyecto.backend.controllers;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,7 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.proyecto.backend.dtos.UsuarioDTO;
@@ -18,42 +18,46 @@ import com.example.proyecto.backend.services.UsuarioService;
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
-    private final UsuarioService usuarioService;
 
-    public UsuarioController(UsuarioService usuarioService) {
-        this.usuarioService = usuarioService;
+    private final UsuarioService service;
+
+    public UsuarioController(UsuarioService service) {
+        this.service = service;
     }
 
-    // Obtener todos (o por empresa con ?empresaId=)
+    // ADMIN y EDITOR pueden ver los usuarios
     @GetMapping
-    public List<UsuarioDTO> obtenerTodos(@RequestParam(required = false) Long empresaId) {
-        if (empresaId != null) {
-            return usuarioService.obtenerPorEmpresa(empresaId);
-        }
-        return usuarioService.obtenerTodos();
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public List<UsuarioDTO> obtenerTodos() {
+        return service.obtenerTodos();
     }
 
-    // Obtener por ID
+    // TODOS pueden ver un usuario individual
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public UsuarioDTO obtenerPorId(@PathVariable Long id) {
-        return usuarioService.obtenerPorId(id);
+        return service.obtenerPorId(id);
     }
 
-    // Crear
+    // SOLO ADMIN puede crear usuarios
     @PostMapping
-    public UsuarioDTO crear(@RequestBody UsuarioDTO usuarioDTO) {
-        return usuarioService.crear(usuarioDTO);
+    @PreAuthorize("hasRole('ADMIN')")
+    public UsuarioDTO crear(@RequestBody UsuarioDTO dto) {
+        return service.crear(dto);
     }
 
-    // Actualizar
+    // ADMIN y EDITOR pueden actualizar 
+    // (el Service ya se encarga de validar cambios prohibidos)
     @PutMapping("/{id}")
-    public UsuarioDTO actualizar(@PathVariable Long id, @RequestBody UsuarioDTO usuarioDTO) {
-        return usuarioService.actualizar(id, usuarioDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public UsuarioDTO actualizar(@PathVariable Long id, @RequestBody UsuarioDTO dto) {
+        return service.actualizar(id, dto);
     }
 
-    // Eliminar (soft delete)
+    // SOLO ADMIN puede eliminar usuarios
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {
-        usuarioService.eliminar(id);
+        service.eliminar(id);
     }
 }

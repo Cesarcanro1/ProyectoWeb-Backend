@@ -22,7 +22,7 @@ public class ProcesoService {
     private final ProcesoRepository repo;
     private final SecurityUtils securityUtils;
 
-    // -------- mapping helpers --------
+    // ========== MAPPER ==========
     private ProcesoDTO toDTO(Proceso p) {
         ProcesoDTO dto = new ProcesoDTO();
         dto.setId(p.getId());
@@ -38,7 +38,7 @@ public class ProcesoService {
         Proceso p = new Proceso();
         p.setId(dto.getId());
 
-        Empresa e = new Empresa(); // map por id sin ir a BD
+        Empresa e = new Empresa();
         e.setId(dto.getEmpresaId());
         p.setEmpresa(e);
 
@@ -49,30 +49,35 @@ public class ProcesoService {
         return p;
     }
 
-    // -------- guard de empresa --------
+    // ========== VALIDACIÓN ==========
     private void validarAccesoEmpresa(Long empresaId) {
-        Long currentCompanyId = securityUtils.currentCompanyId();
-        if (currentCompanyId == null || !currentCompanyId.equals(empresaId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado a esta empresa");
-        }
+        Long current = securityUtils.currentCompanyId();
+        if (current == null || !current.equals(empresaId))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
     }
 
-    // -------- CRUD con scope por empresa --------
+    // ========== CRUD ==========
     public List<ProcesoDTO> obtenerTodos() {
-        Long currentCompanyId = securityUtils.currentCompanyId();
-        if (currentCompanyId == null) {
+        Long empresaId = securityUtils.currentCompanyId();
+        if (empresaId == null)
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
-        }
-        return repo.findAllByEmpresa_Id(currentCompanyId).stream().map(this::toDTO).toList();
+
+        return repo.findAllByEmpresa_Id(empresaId).stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public List<ProcesoDTO> obtenerPorEmpresa(Long empresaId) {
         validarAccesoEmpresa(empresaId);
-        return repo.findAllByEmpresa_Id(empresaId).stream().map(this::toDTO).toList();
+        return repo.findAllByEmpresa_Id(empresaId).stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public ProcesoDTO obtenerPorId(Long id) {
-        Proceso p = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
+        Proceso p = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
+
         validarAccesoEmpresa(p.getEmpresa().getId());
         return toDTO(p);
     }
@@ -84,11 +89,12 @@ public class ProcesoService {
     }
 
     public ProcesoDTO actualizar(Long id, ProcesoDTO dto) {
-        // Primero verificamos contra la empresa del registro actual para evitar escalamiento
-        Proceso p = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
-        validarAccesoEmpresa(p.getEmpresa().getId());
+        Proceso p = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
 
-        // Ahora sí, actualizamos campos (incluyendo empresa)
+        validarAccesoEmpresa(p.getEmpresa().getId());
+        validarAccesoEmpresa(dto.getEmpresaId());
+
         Empresa e = new Empresa();
         e.setId(dto.getEmpresaId());
         p.setEmpresa(e);
@@ -102,8 +108,9 @@ public class ProcesoService {
     }
 
     public void eliminar(Long id) {
-        Proceso p = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
+        Proceso p = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
         validarAccesoEmpresa(p.getEmpresa().getId());
-        repo.delete(p); 
+        repo.delete(p);
     }
 }

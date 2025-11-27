@@ -11,18 +11,19 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.proyecto.backend.dtos.LoginDTO;
 import com.example.proyecto.backend.dtos.TokenDTO;
 import com.example.proyecto.backend.dtos.UsuarioDTO;
+
 import com.example.proyecto.backend.services.UsuarioService;
 
 import lombok.RequiredArgsConstructor;
 
+
 @RestController
 @RequestMapping("/api/auth") // 👈 importante: tus rutas protegidas deberían ir con /api/**
-@RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:4200") // ajusta si cambias el front
 public class AuthController {
 
-    private final AuthService authService;
-    private final UsuarioService usuarioService;
+    private AuthService authService;
+    private UsuarioService usuarioService;
 
     // LOGIN: devuelve el TokenDTO con el JWT
     @PostMapping("/login")

@@ -7,6 +7,8 @@ import org.hibernate.annotations.Where;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
@@ -26,8 +28,8 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Where(clause = "status = 0") // solo activos
-@SQLDelete(sql = "UPDATE usuario SET status = 1 WHERE id = ?") // soft delete
+@Where(clause = "status = 0") 
+@SQLDelete(sql = "UPDATE usuario SET status = 1 WHERE id = ?")
 public class Usuario implements Serializable {
 
     @Id
@@ -35,7 +37,8 @@ public class Usuario implements Serializable {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "empresa_id", nullable = false, foreignKey = @ForeignKey(name = "fk_usuario_empresa"))
+    @JoinColumn(name = "empresa_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_usuario_empresa"))
     private Empresa empresa;
 
     @Column(nullable = false)
@@ -50,6 +53,10 @@ public class Usuario implements Serializable {
     @Column(nullable = false)
     private String password;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private int status = 0; // 0 = activo, 1 = eliminado
+    private Role role;
+
+    @Column(nullable = false)
+    private int status = 0; 
 }

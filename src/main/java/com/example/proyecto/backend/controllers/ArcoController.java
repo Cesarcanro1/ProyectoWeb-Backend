@@ -2,6 +2,7 @@ package com.example.proyecto.backend.controllers;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,38 +20,53 @@ import com.example.proyecto.backend.services.ArcoService;
 @RequestMapping("/api/arcos")
 public class ArcoController {
 
-    private final ArcoService arcoService;
+    private final ArcoService service;
 
-    public ArcoController(ArcoService arcoService) {
-        this.arcoService = arcoService;
+    public ArcoController(ArcoService service) {
+        this.service = service;
     }
 
-    // Obtener todos o por proceso ?procesoId=
+   
+    // CONSULTAR (Roles: ADMIN, EDITOR, VIEWER)
+    
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public List<ArcoDTO> obtenerTodos(@RequestParam(required = false) Long procesoId) {
         if (procesoId != null) {
-            return arcoService.obtenerPorProceso(procesoId);
+            return service.obtenerPorProceso(procesoId);
         }
-        return arcoService.obtenerTodos();
+        return service.obtenerTodos();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public ArcoDTO obtenerPorId(@PathVariable Long id) {
-        return arcoService.obtenerPorId(id);
+        return service.obtenerPorId(id);
     }
 
+    
+    // CREAR (Roles: ADMIN, EDITOR)
     @PostMapping
-    public ArcoDTO crear(@RequestBody ArcoDTO arcoDTO) {
-        return arcoService.crear(arcoDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public ArcoDTO crear(@RequestBody ArcoDTO dto) {
+        return service.crear(dto);
     }
 
+   
+    // ACTUALIZAR (Roles: ADMIN, EDITOR)
+    
     @PutMapping("/{id}")
-    public ArcoDTO actualizar(@PathVariable Long id, @RequestBody ArcoDTO arcoDTO) {
-        return arcoService.actualizar(id, arcoDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public ArcoDTO actualizar(@PathVariable Long id, @RequestBody ArcoDTO dto) {
+        return service.actualizar(id, dto);
     }
 
+    
+    // ELIMINAR (Roles: SOLO ADMIN)
+    
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {
-        arcoService.eliminar(id);
+        service.eliminar(id);
     }
 }

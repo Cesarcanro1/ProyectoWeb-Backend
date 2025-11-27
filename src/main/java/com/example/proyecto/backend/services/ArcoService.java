@@ -24,7 +24,7 @@ public class ArcoService {
     private final ProcesoRepository procesoRepo;
     private final SecurityUtils securityUtils;
 
-    // -------- helpers --------
+    // ========== DTO MAPPER ==========
     private ArcoDTO toDTO(Arco a) {
         ArcoDTO dto = new ArcoDTO();
         dto.setId(a.getId());
@@ -40,56 +40,63 @@ public class ArcoService {
     private Arco toEntity(ArcoDTO dto) {
         Arco a = new Arco();
         a.setId(dto.getId());
+
         Proceso p = new Proceso();
         p.setId(dto.getProcesoId());
         a.setProceso(p);
+
         a.setOrigenTipo(dto.getOrigenTipo());
         a.setOrigenId(dto.getOrigenId());
         a.setDestinoTipo(dto.getDestinoTipo());
         a.setDestinoId(dto.getDestinoId());
         a.setCondicion(dto.getCondicion());
+
         return a;
     }
 
-    // -------- validaciones --------
-    private Long currentCompanyIdOr403() {
-        Long cid = securityUtils.currentCompanyId();
-        if (cid == null)
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
-        return cid;
-    }
-
+    // ========== VALIDACIÓN ==========
     private void validarAccesoProceso(Long procesoId) {
-        Long currentCid = currentCompanyIdOr403();
-        Long ownerCid = procesoRepo.findById(procesoId)
-                .map(p -> p.getEmpresa() != null ? p.getEmpresa().getId() : null)
+        Long current = securityUtils.currentCompanyId();
+        if (current == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
+
+        Long owner = procesoRepo.findById(procesoId)
+                .map(p -> p.getEmpresa().getId())
                 .orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
-        if (!currentCid.equals(ownerCid)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado al proceso");
-        }
+
+        if (!owner.equals(current))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes acceder a este proceso");
     }
 
     private void validarAccesoArco(Arco a) {
-        Long currentCid = currentCompanyIdOr403();
-        Long ownerCid = a.getProceso().getEmpresa() != null ? a.getProceso().getEmpresa().getId() : null;
-        if (!currentCid.equals(ownerCid)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado al arco");
-        }
+        Long current = securityUtils.currentCompanyId();
+        Long owner = a.getProceso().getEmpresa().getId();
+
+        if (!owner.equals(current))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
     }
 
-    // -------- CRUD con scoping --------
+    // ========== CRUD ==========
     public List<ArcoDTO> obtenerTodos() {
-        Long currentCid = currentCompanyIdOr403();
-        return repo.findAllByProceso_Empresa_Id(currentCid).stream().map(this::toDTO).toList();
+        Long empresaId = securityUtils.currentCompanyId();
+        if (empresaId == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
+
+        return repo.findAllByProceso_Empresa_Id(empresaId).stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public List<ArcoDTO> obtenerPorProceso(Long procesoId) {
         validarAccesoProceso(procesoId);
-        return repo.findAllByProceso_Id(procesoId).stream().map(this::toDTO).toList();
+        return repo.findAllByProceso_Id(procesoId).stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public ArcoDTO obtenerPorId(Long id) {
-        Arco a = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Arco no encontrado"));
+        Arco a = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Arco no encontrado"));
         validarAccesoArco(a);
         return toDTO(a);
     }
@@ -101,9 +108,11 @@ public class ArcoService {
     }
 
     public ArcoDTO actualizar(Long id, ArcoDTO dto) {
-        Arco a = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Arco no encontrado"));
-        validarAccesoArco(a);                // valida empresa del arco actual
-        validarAccesoProceso(dto.getProcesoId()); // valida empresa del nuevo proceso (si cambia)
+        Arco a = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Arco no encontrado"));
+
+        validarAccesoArco(a);
+        validarAccesoProceso(dto.getProcesoId());
 
         Proceso p = new Proceso();
         p.setId(dto.getProcesoId());
@@ -114,11 +123,13 @@ public class ArcoService {
         a.setDestinoTipo(dto.getDestinoTipo());
         a.setDestinoId(dto.getDestinoId());
         a.setCondicion(dto.getCondicion());
+
         return toDTO(repo.save(a));
     }
 
     public void eliminar(Long id) {
-        Arco a = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Arco no encontrado"));
+        Arco a = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Arco no encontrado"));
         validarAccesoArco(a);
         repo.delete(a);
     }

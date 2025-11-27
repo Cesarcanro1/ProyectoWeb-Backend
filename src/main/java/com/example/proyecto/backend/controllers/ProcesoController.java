@@ -2,6 +2,7 @@ package com.example.proyecto.backend.controllers;
 
 import java.util.List;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,7 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.proyecto.backend.dtos.ProcesoDTO;
@@ -19,38 +19,51 @@ import com.example.proyecto.backend.services.ProcesoService;
 @RequestMapping("/api/procesos")
 public class ProcesoController {
 
-    private final ProcesoService procesoService;
+    private final ProcesoService service;
 
-    public ProcesoController(ProcesoService procesoService) {
-        this.procesoService = procesoService;
+    public ProcesoController(ProcesoService service) {
+        this.service = service;
     }
 
-    // Obtener todos o por empresa ?empresaId=
+    // ===========================
+    // CONSULTAS (HU-07)
+    // ===========================
     @GetMapping
-    public List<ProcesoDTO> obtenerTodos(@RequestParam(required = false) Long empresaId) {
-        if (empresaId != null) {
-            return procesoService.obtenerPorEmpresa(empresaId);
-        }
-        return procesoService.obtenerTodos();
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
+    public List<ProcesoDTO> obtenerTodos() {
+        return service.obtenerTodos();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR','VIEWER')")
     public ProcesoDTO obtenerPorId(@PathVariable Long id) {
-        return procesoService.obtenerPorId(id);
+        return service.obtenerPorId(id);
     }
 
+    // ===========================
+    // CREAR (HU-04)
+    // ===========================
     @PostMapping
-    public ProcesoDTO crear(@RequestBody ProcesoDTO procesoDTO) {
-        return procesoService.crear(procesoDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public ProcesoDTO crear(@RequestBody ProcesoDTO dto) {
+        return service.crear(dto);
     }
 
+    // ===========================
+    // ACTUALIZAR (HU-05)
+    // ===========================
     @PutMapping("/{id}")
-    public ProcesoDTO actualizar(@PathVariable Long id, @RequestBody ProcesoDTO procesoDTO) {
-        return procesoService.actualizar(id, procesoDTO);
+    @PreAuthorize("hasAnyRole('ADMIN','EDITOR')")
+    public ProcesoDTO actualizar(@PathVariable Long id, @RequestBody ProcesoDTO dto) {
+        return service.actualizar(id, dto);
     }
 
+    // ===========================
+    // ELIMINAR (HU-06)
+    // ===========================
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public void eliminar(@PathVariable Long id) {
-        procesoService.eliminar(id);
+        service.eliminar(id);
     }
 }

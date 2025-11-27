@@ -24,7 +24,7 @@ public class GatewayService {
     private final ProcesoRepository procesoRepo;
     private final SecurityUtils securityUtils;
 
-    // -------- mapping helpers --------
+    // ========== MAPPER ==========
     private GatewayDTO toDTO(Gateway g) {
         GatewayDTO dto = new GatewayDTO();
         dto.setId(g.getId());
@@ -38,69 +38,78 @@ public class GatewayService {
     private Gateway toEntity(GatewayDTO dto) {
         Gateway g = new Gateway();
         g.setId(dto.getId());
-        Proceso p = new Proceso(); // map sin ir a BD (ya validamos proceso antes)
+
+        Proceso p = new Proceso();
         p.setId(dto.getProcesoId());
         g.setProceso(p);
+
         g.setNombre(dto.getNombre());
         g.setTipo(dto.getTipo());
         g.setDescripcion(dto.getDescripcion());
         return g;
     }
 
-    // -------- guards de seguridad --------
-    private Long currentCompanyIdOr403() {
-        Long cid = securityUtils.currentCompanyId();
-        if (cid == null) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
-        return cid;
-    }
-
+    // ========== VALIDACIÓN ==========
     private void validarAccesoProceso(Long procesoId) {
-        Long currentCid = currentCompanyIdOr403();
-        Long ownerCid = procesoRepo.findById(procesoId)
-                .map(p -> p.getEmpresa() != null ? p.getEmpresa().getId() : null)
+        Long current = securityUtils.currentCompanyId();
+        if (current == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
+
+        Long owner = procesoRepo.findById(procesoId)
+                .map(p -> p.getEmpresa().getId())
                 .orElseThrow(() -> new NoSuchElementException("Proceso no encontrado"));
-        if (!currentCid.equals(ownerCid)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado al proceso");
-        }
+
+        if (!owner.equals(current))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
     }
 
     private void validarAccesoGateway(Gateway g) {
-        Long currentCid = currentCompanyIdOr403();
-        Long ownerCid = g.getProceso().getEmpresa() != null ? g.getProceso().getEmpresa().getId() : null;
-        if (!currentCid.equals(ownerCid)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado al gateway");
-        }
+        Long current = securityUtils.currentCompanyId();
+        Long owner = g.getProceso().getEmpresa().getId();
+
+        if (!owner.equals(current))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado");
     }
 
-    // -------- CRUD con scope por empresa --------
+    // ========== CRUD ==========
     public List<GatewayDTO> obtenerTodos() {
-        Long currentCid = currentCompanyIdOr403();
-        return repo.findAllByProceso_Empresa_Id(currentCid).stream().map(this::toDTO).toList();
+        Long empresaId = securityUtils.currentCompanyId();
+
+        if (empresaId == null)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada");
+
+        return repo.findAllByProceso_Empresa_Id(empresaId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public List<GatewayDTO> obtenerPorProceso(Long procesoId) {
         validarAccesoProceso(procesoId);
-        return repo.findAllByProceso_Id(procesoId).stream().map(this::toDTO).toList();
+        return repo.findAllByProceso_Id(procesoId)
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     public GatewayDTO obtenerPorId(Long id) {
-        Gateway g = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Gateway no encontrado"));
+        Gateway g = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Gateway no encontrado"));
         validarAccesoGateway(g);
         return toDTO(g);
     }
 
     public GatewayDTO crear(GatewayDTO dto) {
-        // El gateway siempre pertenece al proceso → valida el proceso
         validarAccesoProceso(dto.getProcesoId());
         Gateway guardado = repo.save(toEntity(dto));
         return toDTO(guardado);
     }
 
     public GatewayDTO actualizar(Long id, GatewayDTO dto) {
-        Gateway g = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Gateway no encontrado"));
-        // Valida empresa del gateway actual (evita escalamiento)
+        Gateway g = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Gateway no encontrado"));
+
         validarAccesoGateway(g);
-        // Si cambian de proceso, valida que el nuevo proceso sea de la misma empresa
         validarAccesoProceso(dto.getProcesoId());
 
         Proceso p = new Proceso();
@@ -114,8 +123,9 @@ public class GatewayService {
     }
 
     public void eliminar(Long id) {
-        Gateway g = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Gateway no encontrado"));
+        Gateway g = repo.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Gateway no encontrado"));
         validarAccesoGateway(g);
-        repo.delete(g); 
+        repo.delete(g);
     }
 }

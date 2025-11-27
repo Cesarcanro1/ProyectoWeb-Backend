@@ -4,17 +4,16 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.example.proyecto.backend.entity.Usuario;
 
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
-    Optional<Usuario> findByEmail(String email);
-    boolean existsByEmail(String email);
-    List<Usuario> findAllByEmpresa_Id(Long empresaId);
 
-    @Query("select u.empresa.id from Usuario u where u.email = :email")
-    Optional<Long> findCompanyIdByEmail(String email);
+    Optional<Usuario> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    List<Usuario> findAllByEmpresa_Id(Long empresaId);
 }

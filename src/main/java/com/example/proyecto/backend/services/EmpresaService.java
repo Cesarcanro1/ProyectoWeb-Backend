@@ -1,6 +1,5 @@
 package com.example.proyecto.backend.services;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.springframework.http.HttpStatus;
@@ -8,7 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.example.proyecto.backend.dtos.EmpresaDTO;
+import com.example.proyecto.backend.dtos.UsuarioDTO;
 import com.example.proyecto.backend.entity.Empresa;
+import com.example.proyecto.backend.entity.Role;
 import com.example.proyecto.backend.repository.EmpresaRepository;
 import com.example.proyecto.backend.security.jwt.SecurityUtils;
 
@@ -20,8 +21,8 @@ public class EmpresaService {
 
     private final EmpresaRepository repo;
     private final SecurityUtils securityUtils;
+    private final UsuarioService usuarioService;
 
-    // helpers
     private EmpresaDTO toDTO(Empresa e) {
         EmpresaDTO dto = new EmpresaDTO();
         dto.setId(e.getId());
@@ -40,20 +41,43 @@ public class EmpresaService {
         return e;
     }
 
-    // Obtener solo la empresa del usuario autenticado
+    // =======================================
+    // REGISTRO DE EMPRESA (HU-01)
+    // =======================================
+
+    public EmpresaDTO registrarEmpresa(EmpresaDTO dto) {
+
+        if (repo.findByNit(dto.getNit()).isPresent()) {
+            throw new IllegalArgumentException("El NIT ya está registrado");
+        }
+
+        Empresa nueva = repo.save(toEntity(dto));
+
+        UsuarioDTO admin = dto.getAdmin();
+        admin.setEmpresaId(nueva.getId());
+        admin.setRole(Role.ADMIN);
+
+        usuarioService.crearAdminInicial(
+                nueva.getId(),
+                admin.getEmail(),
+                admin.getNombres(),
+                admin.getApellidos(),
+                admin.getPassword()
+        );
+
+        return toDTO(nueva);
+    }
+
+    // =======================================
+
     public EmpresaDTO obtenerMiEmpresa() {
         Long companyId = securityUtils.currentCompanyId();
         if (companyId == null) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No hay empresa asociada al usuario actual");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
         Empresa e = repo.findById(companyId)
                 .orElseThrow(() -> new NoSuchElementException("Empresa no encontrada"));
         return toDTO(e);
-    }
-
-    // Bloquea listar todas (solo admins deberían hacerlo)
-    public List<EmpresaDTO> obtenerTodos() {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acceso denegado: solo administradores");
     }
 
     public EmpresaDTO obtenerPorId(Long id) {
@@ -66,13 +90,9 @@ public class EmpresaService {
         return toDTO(e);
     }
 
-    public EmpresaDTO crear(EmpresaDTO dto) {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Creación de empresas no permitida");
-    }
-
     public EmpresaDTO actualizar(Long id, EmpresaDTO dto) {
         Long companyId = securityUtils.currentCompanyId();
-        if (companyId == null || !companyId.equals(id)) {
+        if (!id.equals(companyId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No puedes modificar otra empresa");
         }
         Empresa e = repo.findById(id).orElseThrow(() -> new NoSuchElementException("Empresa no encontrada"));
@@ -80,9 +100,5 @@ public class EmpresaService {
         e.setNit(dto.getNit());
         e.setCorreoContacto(dto.getCorreoContacto());
         return toDTO(repo.save(e));
-    }
-
-    public void eliminar(Long id) {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Eliminación de empresas no permitida");
     }
 }

@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 env:
   IMAGE: ghcr.io/cesarcanro1/proyectoweb-backend
@@ -52,7 +53,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [self-hosted, microk8s] 
+    runs-on: [self-hosted, microk8s]
 
     steps:
       - name: Checkout repo
@@ -67,21 +68,20 @@ jobs:
 
       - name: Actualizar dominio nip.io en k8s.yaml
         run: |
-          sed -i "s/backend\.10\.43\.103\.143\.nip\.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
+          sed -i "s/backend\.[0-9\.]*\.nip\.io/backend.${NODE_IP}.nip.io/g" k8s.yaml
 
-      - name: Aplicar manifiestos a MicroK8s (sin validar)
+      - name: Aplicar manifiestos a MicroK8s
         run: |
           sudo microk8s kubectl apply --validate=false -f k8s.yaml
 
       - name: Actualizar imagen del deployment
         run: |
-          sudo microk8s kubectl -n ${{ env.NAMESPACE }} set image deployment/${{ env.DEPLOYMENT }} \
-            backend=${{ env.IMAGE }}:latest
+          sudo microk8s kubectl -n ${{ env.NAMESPACE }} set image deployment/${{ env.DEPLOYMENT }} backend=${{ env.IMAGE }}:latest
 
       - name: Esperar rollout
         run: |
           sudo microk8s kubectl -n ${{ env.NAMESPACE }} rollout status deployment/${{ env.DEPLOYMENT }} --timeout=120s
 
-      - name: Mostrar pods
+      - name: Mostrar pods en ejecución
         run: |
           sudo microk8s kubectl -n ${{ env.NAMESPACE }} get pods -o wide
